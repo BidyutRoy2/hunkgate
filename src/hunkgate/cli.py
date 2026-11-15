@@ -20,6 +20,9 @@ Exit codes: 0 ok; 1 usage/decision/store error; 2 the gate is not READY
 
 from __future__ import annotations
 
+
+from __future__ import annotations
+
 import argparse
 import json
 import os
