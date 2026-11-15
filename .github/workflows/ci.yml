@@ -31,8 +31,10 @@ jobs:
         # src-layout bootstrap in tests/__init__.py runs.
         run: python -m unittest discover -s tests -t .
       - name: Smoke test the CLI
+        # doctor exits 1 when the store is missing, so init first.
         run: |
           hunkgate --version
+          hunkgate init
           hunkgate doctor
           hunkgate demo
 
