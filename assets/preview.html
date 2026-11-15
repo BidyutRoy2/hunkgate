@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>hunkgate report — HG-20261115-070425-25c7be</title>
+<style>
+:root { color-scheme: light dark; }
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 2rem auto; max-width: 860px; padding: 0 1rem; line-height: 1.5;
+  background: #fff; color: #111; }
+@media (prefers-color-scheme: dark) {
+  body { background: #0d1117; color: #e6edf3; }
+  table, th, td { border-color: #30363d !important; }
+  code { background: #161b22 !important; }
+}
+h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 1.6rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #d0d7de; padding: 0.4rem 0.6rem;
+  text-align: left; font-size: 0.9rem; }
+code { background: #f6f8fa; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px;
+  font-weight: 600; font-size: 0.85rem; }
+.block { background: #ffebe9; color: #82071e; }
+.review { background: #fff8c5; color: #7a4a00; }
+.ok { background: #dafbe1; color: #116329; }
+@media (prefers-color-scheme: dark) {
+  .block { background: #5a1a1a; color: #ffb3ab; }
+  .review { background: #5a4a12; color: #ffe9a8; }
+  .ok { background: #123d1f; color: #9be8ae; }
+}
+</style></head><body>
+<h1>Review report — HG-20261115-070425-25c7be</h1>
+<p><strong>Add login + cleanup (agent run #42)</strong> · created 2026-11-15T07:04:25+00:00 · source <code>demo.diff</code></p>
+<p>Risk: <strong>95/100</strong>
+<span class="badge block">BLOCK</span> ·
+Files: 5 · Hunks: 5 · Findings: 8</p>
+<p>Gate: <strong>READY</strong> — coverage 100% (5/5 decided,
+2 approved, 3 rejected, 0 undecided,
+0 blocking)</p>
+<h2>Hunks</h2><table><tr><th>Hunk</th><th>File</th><th>Risk</th><th>Decision</th><th>Findings</th></tr>
+<tr><td>F1.1</td><td><code>src/auth.py</code></td><td>95 (BLOCK)</td><td>rejected</td><td>SEC-01, AUTH-01</td></tr>
+<tr><td>F2.1</td><td><code>src/db.py</code></td><td>95 (BLOCK)</td><td>rejected</td><td>DESTRUCT-01, DESTRUCT-02</td></tr>
+<tr><td>F3.1</td><td><code>src/api.py</code></td><td>75 (BLOCK)</td><td>rejected</td><td>EVAL-01, NET-01</td></tr>
+<tr><td>F4.1</td><td><code>tests/test_api.py</code></td><td>40 (REVIEW)</td><td>approved</td><td>TEST-01</td></tr>
+<tr><td>F5.1</td><td><code>README.md</code></td><td>10 (OK)</td><td>auto-approved</td><td>DOC-01</td></tr>
+</table>
+<h2>F1.1 · <code>src/auth.py</code> — 95/100 BLOCK</h2><ul>
+<li><strong>[SEC-01]</strong> Possible secret or API key in added code
+<br>Evidence: <code>API_KEY = &quot;sk-live-9f2c7d1a4b6e8f0a&quot;</code>
+<br>Fix: Move the value to an environment variable or secret store; rotate it if it was ever committed.</li>
+<li><strong>[AUTH-01]</strong> TLS verification disabled
+<br>Evidence: <code>session.verify = False</code>
+<br>Fix: Remove verify=False / unverified contexts. If a test needs it, scope it to the test and never ship it.</li>
+<li>Decision reason: Hardcoded API key + verify=False. Move the key to an env var and drop verify=False.</li>
+</ul>
+<h2>F2.1 · <code>src/db.py</code> — 95/100 BLOCK</h2><ul>
+<li><strong>[DESTRUCT-01]</strong> Recursive delete (rm -rf) in added code
+<br>Evidence: <code>shutil.rmtree(&quot;/var/lib/tracker/data&quot;)</code>
+<br>Fix: Delete with an explicit, narrow path and a guard (refuse to delete outside the workspace).</li>
+<li><strong>[DESTRUCT-02]</strong> DROP / TRUNCATE in added code
+<br>Evidence: <code>conn.execute(&quot;DROP TABLE sessions&quot;)</code>
+<br>Fix: Destructive schema statements need a migration with a backup and a human-approved rollout plan.</li>
+<li>Decision reason: DROP TABLE + rmtree in one helper. Split into a migration with a backup plan.</li>
+</ul>
+<h2>F3.1 · <code>src/api.py</code> — 75/100 BLOCK</h2><ul>
+<li><strong>[EVAL-01]</strong> eval()/exec() on (possibly) untrusted input
+<br>Evidence: <code>return [i for i in items if eval(user_filter)]</code>
+<br>Fix: Replace eval/exec with explicit parsing (ast.literal_eval, a small parser, or a dispatch table).</li>
+<li><strong>[NET-01]</strong> New outbound network call
+<br>Evidence: <code>return requests.get(&quot;https://status.example.com/health&quot;, timeout=5)</code>
+<br>Fix: Confirm the endpoint, timeout and retry policy; log failures without leaking credentials.</li>
+<li>Decision reason: eval() on user input. Use a parser, not eval.</li>
+</ul>
+<h2>F4.1 · <code>tests/test_api.py</code> — 40/100 REVIEW</h2><ul>
+<li><strong>[TEST-01]</strong> Test skipped or marked xfail
+<br>Evidence: <code>@pytest.mark.skip(reason=&quot;flaky on CI, see #12&quot;)</code>
+<br>Fix: A skipped test is a promise to look later. Say why it is skipped and when it comes back.</li>
+<li>Decision reason: Skip is temporary and tracked in #12.</li>
+</ul>
+<h2>F5.1 · <code>README.md</code> — 10/100 OK</h2><ul>
+<li><strong>[DOC-01]</strong> Documentation-only change
+<br>Evidence: <code>README.md</code>
+<br>Fix: Safe to approve on its own — but check the claims still match the code.</li>
+<li>Decision reason: policy: docs-only</li>
+</ul>
+<h2>Audit trail</h2><ul>
+<li> · auto-approve · HG-20261115-070425-25c7be · </li>
+<li>2026-11-15T07:04:25+00:00 · rejected · F1.1 · ada — Hardcoded API key + verify=False. Move the key to an env var and drop verify=False.</li>
+<li>2026-11-15T07:04:25+00:00 · rejected · F2.1 · ada — DROP TABLE + rmtree in one helper. Split into a migration with a backup plan.</li>
+<li>2026-11-15T07:04:25+00:00 · rejected · F3.1 · ada — eval() on user input. Use a parser, not eval.</li>
+<li>2026-11-15T07:04:25+00:00 · approved · F4.1 · ada — Skip is temporary and tracked in #12.</li>
+</ul>
+</body></html>
