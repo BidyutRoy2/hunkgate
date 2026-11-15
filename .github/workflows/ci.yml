@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # macOS runners ship fewer old Pythons; keep the matrix fast.
+          - os: macos-latest
+            python-version: "3.9"
+          - os: macos-latest
+            python-version: "3.10"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (source only — no PyPI package yet)
+        run: python -m pip install -e .
+      - name: Run tests
+        # -t . matters: it imports tests as a package so the
+        # src-layout bootstrap in tests/__init__.py runs.
+        run: python -m unittest discover -s tests -t .
+      - name: Smoke test the CLI
+        run: |
+          hunkgate --version
+          hunkgate doctor
+          hunkgate demo
+
+  demo:
+    # The demo fixture must always score exactly 95/100 (BLOCK) with
+    # 5 hunks and 8 findings, and end with the gate READY. A change to
+    # rules/scoring that moves it fails loudly here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e .
+      - name: Demo fixture regression check
+        run: |
+          python - <<'EOF'
+          from hunkgate.demo import run_demo
+          data = run_demo(print_fn=lambda *a: None)
+          assert data["risk"] == 95, data["risk"]
+          assert data["hunks"] == 5, data["hunks"]
+          assert data["findings"] == 8, data["findings"]
+          assert data["verdict"]["state"] == "READY"
+          assert data["verdict"]["coverage"] == 100
+          print("demo fixture pinned: 95/100, 5 hunks, 8 findings, READY")
+          EOF
