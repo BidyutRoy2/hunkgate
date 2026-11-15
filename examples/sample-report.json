@@ -1,0 +1,212 @@
+{
+  "id": "HG-20261115-070425-25c7be",
+  "title": "Add login + cleanup (agent run #42)",
+  "created": "2026-11-15T07:04:25+00:00",
+  "source": "demo.diff",
+  "agent": "claude-code",
+  "risk": 95,
+  "files": 5,
+  "hunks": 5,
+  "findings": 8,
+  "item_findings": [],
+  "verdict": {
+    "state": "READY",
+    "coverage": 100,
+    "decided": 5,
+    "total": 5,
+    "undecided_block": 0,
+    "undecided": 0,
+    "approved": 2,
+    "rejected": 3
+  },
+  "rows": [
+    {
+      "id": "F1.1",
+      "path": "src/auth.py",
+      "status": "modified",
+      "score": 95,
+      "band": "BLOCK",
+      "decision": "rejected",
+      "by": "ada",
+      "reason": "Hardcoded API key + verify=False. Move the key to an env var and drop verify=False.",
+      "findings": [
+        {
+          "rule_id": "SEC-01",
+          "severity": "critical",
+          "message": "Possible secret or API key in added code",
+          "fix": "Move the value to an environment variable or secret store; rotate it if it was ever committed.",
+          "evidence": "API_KEY = \"sk-live-9f2c7d1a4b6e8f0a\"",
+          "line_no": 3,
+          "direction": "add"
+        },
+        {
+          "rule_id": "AUTH-01",
+          "severity": "high",
+          "message": "TLS verification disabled",
+          "fix": "Remove verify=False / unverified contexts. If a test needs it, scope it to the test and never ship it.",
+          "evidence": "session.verify = False",
+          "line_no": 7,
+          "direction": "add"
+        }
+      ],
+      "added": 4,
+      "removed": 0
+    },
+    {
+      "id": "F2.1",
+      "path": "src/db.py",
+      "status": "modified",
+      "score": 95,
+      "band": "BLOCK",
+      "decision": "rejected",
+      "by": "ada",
+      "reason": "DROP TABLE + rmtree in one helper. Split into a migration with a backup plan.",
+      "findings": [
+        {
+          "rule_id": "DESTRUCT-01",
+          "severity": "critical",
+          "message": "Recursive delete (rm -rf) in added code",
+          "fix": "Delete with an explicit, narrow path and a guard (refuse to delete outside the workspace).",
+          "evidence": "shutil.rmtree(\"/var/lib/tracker/data\")",
+          "line_no": 8,
+          "direction": "add"
+        },
+        {
+          "rule_id": "DESTRUCT-02",
+          "severity": "critical",
+          "message": "DROP / TRUNCATE in added code",
+          "fix": "Destructive schema statements need a migration with a backup and a human-approved rollout plan.",
+          "evidence": "conn.execute(\"DROP TABLE sessions\")",
+          "line_no": 10,
+          "direction": "add"
+        }
+      ],
+      "added": 7,
+      "removed": 0
+    },
+    {
+      "id": "F3.1",
+      "path": "src/api.py",
+      "status": "modified",
+      "score": 75,
+      "band": "BLOCK",
+      "decision": "rejected",
+      "by": "ada",
+      "reason": "eval() on user input. Use a parser, not eval.",
+      "findings": [
+        {
+          "rule_id": "EVAL-01",
+          "severity": "high",
+          "message": "eval()/exec() on (possibly) untrusted input",
+          "fix": "Replace eval/exec with explicit parsing (ast.literal_eval, a small parser, or a dispatch table).",
+          "evidence": "return [i for i in items if eval(user_filter)]",
+          "line_no": 4,
+          "direction": "add"
+        },
+        {
+          "rule_id": "NET-01",
+          "severity": "low",
+          "message": "New outbound network call",
+          "fix": "Confirm the endpoint, timeout and retry policy; log failures without leaking credentials.",
+          "evidence": "return requests.get(\"https://status.example.com/health\", timeout=5)",
+          "line_no": 7,
+          "direction": "add"
+        }
+      ],
+      "added": 6,
+      "removed": 1
+    },
+    {
+      "id": "F4.1",
+      "path": "tests/test_api.py",
+      "status": "modified",
+      "score": 40,
+      "band": "REVIEW",
+      "decision": "approved",
+      "by": "ada",
+      "reason": "Skip is temporary and tracked in #12.",
+      "findings": [
+        {
+          "rule_id": "TEST-01",
+          "severity": "medium",
+          "message": "Test skipped or marked xfail",
+          "fix": "A skipped test is a promise to look later. Say why it is skipped and when it comes back.",
+          "evidence": "@pytest.mark.skip(reason=\"flaky on CI, see #12\")",
+          "line_no": 8,
+          "direction": "add"
+        }
+      ],
+      "added": 6,
+      "removed": 0
+    },
+    {
+      "id": "F5.1",
+      "path": "README.md",
+      "status": "modified",
+      "score": 10,
+      "band": "OK",
+      "decision": "auto-approved",
+      "by": "policy",
+      "reason": "policy: docs-only",
+      "findings": [
+        {
+          "rule_id": "DOC-01",
+          "severity": "low",
+          "message": "Documentation-only change",
+          "fix": "Safe to approve on its own — but check the claims still match the code.",
+          "evidence": "README.md",
+          "line_no": null,
+          "direction": "path"
+        }
+      ],
+      "added": 4,
+      "removed": 0
+    }
+  ],
+  "comments": [],
+  "audit": [
+    {
+      "event": "auto-approve",
+      "item": "HG-20261115-070425-25c7be",
+      "policy": [
+        "docs-only"
+      ]
+    },
+    {
+      "event": "rejected",
+      "item": "HG-20261115-070425-25c7be",
+      "hunk": "F1.1",
+      "file": "src/auth.py",
+      "by": "ada",
+      "reason": "Hardcoded API key + verify=False. Move the key to an env var and drop verify=False.",
+      "at": "2026-11-15T07:04:25+00:00"
+    },
+    {
+      "event": "rejected",
+      "item": "HG-20261115-070425-25c7be",
+      "hunk": "F2.1",
+      "file": "src/db.py",
+      "by": "ada",
+      "reason": "DROP TABLE + rmtree in one helper. Split into a migration with a backup plan.",
+      "at": "2026-11-15T07:04:25+00:00"
+    },
+    {
+      "event": "rejected",
+      "item": "HG-20261115-070425-25c7be",
+      "hunk": "F3.1",
+      "file": "src/api.py",
+      "by": "ada",
+      "reason": "eval() on user input. Use a parser, not eval.",
+      "at": "2026-11-15T07:04:25+00:00"
+    },
+    {
+      "event": "approved",
+      "item": "HG-20261115-070425-25c7be",
+      "hunk": "F4.1",
+      "file": "tests/test_api.py",
+      "by": "ada",
+      "reason": "Skip is temporary and tracked in #12.",
+      "at": "2026-11-15T07:04:25+00:00"
+    }
+  ]
+}

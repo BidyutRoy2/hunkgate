@@ -1,0 +1,26 @@
+# Example hunkgate config — copy to .hunkgate.toml in your repo root.
+# Everything is optional. Unknown keys are refused, not ignored.
+
+# Name recorded on every decision (overridden by --reviewer and by
+# the HUNKGATE_REVIEWER environment variable).
+reviewer = "ada"
+
+# Auto-approve at capture time. Allowed values: "docs-only", "tests-only".
+# An auto-approval is recorded as a decision with the policy name.
+auto_approve = ["docs-only"]
+
+# The CI gate fails while any hunk is undecided (default true).
+block_on_undecided = true
+
+# Disable a built-in rule by id.
+[rules.SEC-05]
+enabled = false
+
+# Your own rules: one regex over one added line (or a path).
+[[custom_rule]]
+id = "ACME-01"
+severity = "high"
+pattern = "TODO\\(acme\\)"
+message = "ACME TODO left in code"
+fix = "Resolve the TODO or file a ticket and link it."
+direction = "add"
